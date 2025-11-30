@@ -1,0 +1,779 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>高级词法分析器 - 可视化演示</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: "Times New Roman", "SimSun", serif;
+        background: #f0f4f8;
+        min-height: 100vh;
+        padding: 40px;
+        line-height: 1.6;
+        color: #000;
+      }
+
+      .container {
+        max-width: 1400px;
+        margin: 0 auto;
+        background: white;
+        border: 2px solid #2c5aa0;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      }
+
+      .header {
+        background: #e8f1fc;
+        color: #1a3a5c;
+        padding: 30px;
+        text-align: center;
+        border-bottom: 3px solid #2c5aa0;
+      }
+
+      .header h1 {
+        font-size: 2.2em;
+        margin-bottom: 10px;
+        font-weight: bold;
+      }
+
+      .header p {
+        font-size: 1.1em;
+        color: #2c5aa0;
+      }
+
+      .content {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 20px;
+        padding: 30px;
+        background: white;
+      }
+
+      .panel {
+        background: #fafbfc;
+        border: 1px solid #2c5aa0;
+        padding: 20px;
+      }
+
+      .panel h2 {
+        color: #1a3a5c;
+        margin-bottom: 15px;
+        font-size: 1.5em;
+        font-weight: bold;
+        border-bottom: 2px solid #2c5aa0;
+        padding-bottom: 10px;
+      }
+
+      .code-editor {
+        width: 100%;
+        min-height: 300px;
+        font-family: "Courier New", monospace;
+        font-size: 14px;
+        padding: 15px;
+        border: 2px solid #2c5aa0;
+        resize: vertical;
+        background: #ffffff;
+        color: #000;
+      }
+
+      .buttons {
+        margin-top: 15px;
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+      }
+
+      .btn {
+        padding: 10px 20px;
+        border: 2px solid #2c5aa0;
+        cursor: pointer;
+        font-size: 1em;
+        font-weight: bold;
+        transition: all 0.2s;
+        background: white;
+        color: #2c5aa0;
+      }
+
+      .btn-primary {
+        background: #2c5aa0;
+        color: white;
+      }
+
+      .btn-primary:hover {
+        background: #1a3a5c;
+        border-color: #1a3a5c;
+      }
+
+      .btn-secondary {
+        background: white;
+        color: #2c5aa0;
+      }
+
+      .btn-secondary:hover {
+        background: #e8f1fc;
+      }
+
+      .token-list {
+        max-height: 400px;
+        overflow-y: auto;
+        border: 2px solid #2c5aa0;
+        background: white;
+      }
+
+      .token-item {
+        display: grid;
+        grid-template-columns: 50px 150px 1fr 100px;
+        padding: 10px 15px;
+        border-bottom: 1px solid #d0d7de;
+        transition: background 0.2s;
+        align-items: center;
+      }
+
+      .token-item:hover {
+        background: #f6f8fa;
+      }
+
+      .token-index {
+        font-weight: bold;
+        color: #666;
+      }
+
+      .token-type {
+        padding: 5px 10px;
+        font-size: 0.9em;
+        font-weight: bold;
+        text-align: center;
+        border: 1px solid;
+      }
+
+      .token-value {
+        font-family: "Courier New", monospace;
+        padding: 5px 10px;
+        background: #f6f8fa;
+      }
+
+      .token-location {
+        font-size: 0.85em;
+        color: #666;
+        text-align: right;
+      }
+
+      /* Token类型颜色 - 学术风格配色 */
+      .type-keyword {
+        background: #dceefb;
+        color: #1a3a5c;
+        border-color: #2c5aa0;
+      }
+      .type-identifier {
+        background: #d4f1e8;
+        color: #0d5d3a;
+        border-color: #1a8a5a;
+      }
+      .type-number {
+        background: #fff3cd;
+        color: #856404;
+        border-color: #d39e00;
+      }
+      .type-float {
+        background: #ffeaa7;
+        color: #7d5a00;
+        border-color: #d69e2e;
+      }
+      .type-string {
+        background: #fde4e8;
+        color: #9a1750;
+        border-color: #d63384;
+      }
+      .type-operator {
+        background: #e0d4f7;
+        color: #432874;
+        border-color: #6f42c1;
+      }
+      .type-delimiter {
+        background: #dfe3e8;
+        color: #383d41;
+        border-color: #6c757d;
+      }
+      .type-error {
+        background: #f8d7da;
+        color: #721c24;
+        border-color: #dc3545;
+      }
+
+      .stats {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 15px;
+        margin-top: 20px;
+      }
+
+      .stat-card {
+        background: white;
+        padding: 15px;
+        text-align: center;
+        border: 1px solid #2c5aa0;
+      }
+
+      .stat-number {
+        font-size: 2em;
+        font-weight: bold;
+        color: #2c5aa0;
+      }
+
+      .stat-label {
+        color: #666;
+        margin-top: 5px;
+      }
+
+      .error-list {
+        background: #fff5f5;
+        border: 2px solid #dc3545;
+        padding: 15px;
+        margin-top: 15px;
+        max-height: 150px;
+        overflow-y: auto;
+      }
+
+      .error-item {
+        padding: 8px;
+        margin-bottom: 8px;
+        background: white;
+        border-left: 4px solid #dc3545;
+      }
+
+      .error-location {
+        font-weight: bold;
+        color: #dc3545;
+      }
+
+      .visualization-canvas {
+        width: 100%;
+        height: 300px;
+        border: 2px solid #2c5aa0;
+        background: white;
+        overflow-x: auto;
+        overflow-y: hidden;
+        position: relative;
+      }
+
+      .token-node {
+        display: inline-block;
+        padding: 10px 15px;
+        margin: 10px 5px;
+        border: 1px solid;
+        position: relative;
+        transition: transform 0.2s;
+      }
+
+      .token-node:hover {
+        transform: scale(1.05);
+        z-index: 10;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+      }
+
+      .token-node::after {
+        content: "→";
+        position: absolute;
+        right: -20px;
+        top: 50%;
+        transform: translateY(-50%);
+        font-size: 1.5em;
+        color: #999;
+      }
+
+      .token-node:last-child::after {
+        content: "";
+      }
+
+      .examples {
+        grid-column: 1 / -1;
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+      }
+
+      .example-btn {
+        padding: 8px 16px;
+        background: white;
+        border: 2px solid #2c5aa0;
+        cursor: pointer;
+        transition: all 0.2s;
+        color: #2c5aa0;
+      }
+
+      .example-btn:hover {
+        background: #2c5aa0;
+        color: white;
+      }
+
+      @keyframes slideIn {
+        from {
+          opacity: 0;
+          transform: translateY(10px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      .token-item {
+        animation: slideIn 0.3s ease-out;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="header">
+        <h1>高级词法分析器</h1>
+        <p>支持字符串、浮点数、错误恢复、行号跟踪与可视化</p>
+      </div>
+
+      <div class="content">
+        <!-- 左侧：代码输入 -->
+        <div class="panel">
+          <h2>源代码输入</h2>
+          <textarea
+            class="code-editor"
+            id="codeInput"
+            placeholder="在此输入您的代码..."
+          >
+int main() {
+    float pi = 3.14159;
+    string msg = "Hello World!";
+    int x = 10;
+    
+    if (x >= 5) {
+        x = x + 1;
+    }
+    
+    return 0;
+}</textarea
+          >
+
+          <div class="buttons">
+            <button class="btn btn-primary" onclick="analyzeCode()">
+              开始分析
+            </button>
+            <button class="btn btn-secondary" onclick="clearAll()">清空</button>
+            <button class="btn btn-secondary" onclick="exportTokens()">
+              导出JSON
+            </button>
+          </div>
+
+          <div class="examples">
+            <h3 style="width: 100%; color: #666; font-size: 1em">快速示例：</h3>
+            <button class="example-btn" onclick="loadExample(1)">
+              基础语法
+            </button>
+            <button class="example-btn" onclick="loadExample(2)">浮点数</button>
+            <button class="example-btn" onclick="loadExample(3)">字符串</button>
+            <button class="example-btn" onclick="loadExample(4)">
+              错误恢复
+            </button>
+            <button class="example-btn" onclick="loadExample(5)">注释</button>
+          </div>
+        </div>
+
+        <!-- 右侧：Token列表 -->
+        <div class="panel">
+          <h2>Token 序列</h2>
+          <div class="token-list" id="tokenList">
+            <div style="padding: 50px; text-align: center; color: #999">
+              点击"开始分析"按钮查看Token序列
+            </div>
+          </div>
+        </div>
+
+        <!-- 统计信息 -->
+        <div class="panel" style="grid-column: 1 / -1">
+          <h2>统计信息</h2>
+          <div class="stats" id="stats">
+            <div class="stat-card">
+              <div class="stat-number" id="totalTokens">0</div>
+              <div class="stat-label">总Token数</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-number" id="totalKeywords">0</div>
+              <div class="stat-label">关键字</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-number" id="totalIdentifiers">0</div>
+              <div class="stat-label">标识符</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-number" id="totalNumbers">0</div>
+              <div class="stat-label">数字常量</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-number" id="totalErrors">0</div>
+              <div class="stat-label">错误</div>
+            </div>
+          </div>
+
+          <div id="errorContainer"></div>
+        </div>
+
+        <!-- 可视化 -->
+        <div class="panel" style="grid-column: 1 / -1">
+          <h2>Token 流可视化</h2>
+          <div class="visualization-canvas" id="visualization">
+            <div style="padding: 50px; text-align: center; color: #999">
+              Token流将在此显示
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      // Token类型定义
+      const TokenType = {
+        INT: "INT",
+        IF: "IF",
+        ELSE: "ELSE",
+        WHILE: "WHILE",
+        RETURN: "RETURN",
+        VOID: "VOID",
+        ID: "ID",
+        NUM: "NUM",
+        FLOAT: "FLOAT",
+        STRING: "STRING",
+        PLUS: "PLUS",
+        MINUS: "MINUS",
+        MULTIPLY: "MULTIPLY",
+        DIVIDE: "DIVIDE",
+        ASSIGN: "ASSIGN",
+        GT: "GT",
+        LT: "LT",
+        EQ: "EQ",
+        NE: "NE",
+        GE: "GE",
+        LE: "LE",
+        LPAREN: "LPAREN",
+        RPAREN: "RPAREN",
+        LBRACE: "LBRACE",
+        RBRACE: "RBRACE",
+        SEMICOLON: "SEMICOLON",
+        COMMA: "COMMA",
+        ERROR: "ERROR",
+        EOF: "EOF",
+      };
+
+      // Token规则
+      const tokenRules = [
+        { pattern: /\bint\b/, type: TokenType.INT },
+        { pattern: /\bif\b/, type: TokenType.IF },
+        { pattern: /\belse\b/, type: TokenType.ELSE },
+        { pattern: /\bwhile\b/, type: TokenType.WHILE },
+        { pattern: /\breturn\b/, type: TokenType.RETURN },
+        { pattern: /\bvoid\b/, type: TokenType.VOID },
+        { pattern: /\d+\.\d+([eE][+-]?\d+)?/, type: TokenType.FLOAT },
+        { pattern: /\d+/, type: TokenType.NUM },
+        { pattern: /"([^"\\]|\\.)*"/, type: TokenType.STRING },
+        { pattern: /[a-zA-Z_][a-zA-Z0-9_]*/, type: TokenType.ID },
+        { pattern: /==/, type: TokenType.EQ },
+        { pattern: /!=/, type: TokenType.NE },
+        { pattern: />=/, type: TokenType.GE },
+        { pattern: /<=/, type: TokenType.LE },
+        { pattern: /\+/, type: TokenType.PLUS },
+        { pattern: /-/, type: TokenType.MINUS },
+        { pattern: /\*/, type: TokenType.MULTIPLY },
+        { pattern: /\/\/[^\n]*/, type: null },
+        { pattern: /\/\*[\s\S]*?\*\//, type: null },
+        { pattern: /\//, type: TokenType.DIVIDE },
+        { pattern: /=/, type: TokenType.ASSIGN },
+        { pattern: />/, type: TokenType.GT },
+        { pattern: /</, type: TokenType.LT },
+        { pattern: /\(/, type: TokenType.LPAREN },
+        { pattern: /\)/, type: TokenType.RPAREN },
+        { pattern: /\{/, type: TokenType.LBRACE },
+        { pattern: /\}/, type: TokenType.RBRACE },
+        { pattern: /;/, type: TokenType.SEMICOLON },
+        { pattern: /,/, type: TokenType.COMMA },
+        { pattern: /[ \t]+/, type: null },
+        { pattern: /\n/, type: null },
+      ];
+
+      // 词法分析函数
+      function lexicalAnalyze(sourceCode) {
+        const tokens = [];
+        const errors = [];
+        let line = 1,
+          column = 1,
+          pos = 0;
+
+        while (pos < sourceCode.length) {
+          let matched = false;
+
+          for (const rule of tokenRules) {
+            const regex = new RegExp("^" + rule.pattern.source);
+            const match = sourceCode.slice(pos).match(regex);
+
+            if (match) {
+              const matchedText = match[0];
+
+              if (matchedText === "\n") {
+                line++;
+                column = 1;
+              } else if (rule.type === null) {
+                const newlines = (matchedText.match(/\n/g) || []).length;
+                if (newlines > 0) {
+                  line += newlines;
+                  column = matchedText.length - matchedText.lastIndexOf("\n");
+                } else {
+                  column += matchedText.length;
+                }
+              } else {
+                tokens.push({
+                  type: rule.type,
+                  value: matchedText,
+                  line: line,
+                  column: column,
+                });
+                column += matchedText.length;
+              }
+
+              pos += matchedText.length;
+              matched = true;
+              break;
+            }
+          }
+
+          if (!matched) {
+            const errorChar = sourceCode[pos];
+            errors.push({
+              message: `非法字符: '${errorChar}'`,
+              line: line,
+              column: column,
+            });
+            tokens.push({
+              type: TokenType.ERROR,
+              value: errorChar,
+              line: line,
+              column: column,
+            });
+
+            if (errorChar === "\n") {
+              line++;
+              column = 1;
+            } else {
+              column++;
+            }
+            pos++;
+          }
+        }
+
+        return { tokens, errors };
+      }
+
+      // 获取Token类型的CSS类
+      function getTokenClass(type) {
+        const keywords = ["INT", "IF", "ELSE", "WHILE", "RETURN", "VOID"];
+        const operators = [
+          "PLUS",
+          "MINUS",
+          "MULTIPLY",
+          "DIVIDE",
+          "ASSIGN",
+          "GT",
+          "LT",
+          "EQ",
+          "NE",
+          "GE",
+          "LE",
+        ];
+        const delimiters = [
+          "LPAREN",
+          "RPAREN",
+          "LBRACE",
+          "RBRACE",
+          "SEMICOLON",
+          "COMMA",
+        ];
+
+        if (keywords.includes(type)) return "type-keyword";
+        if (type === "ID") return "type-identifier";
+        if (type === "NUM") return "type-number";
+        if (type === "FLOAT") return "type-float";
+        if (type === "STRING") return "type-string";
+        if (operators.includes(type)) return "type-operator";
+        if (delimiters.includes(type)) return "type-delimiter";
+        if (type === "ERROR") return "type-error";
+        return "type-other";
+      }
+
+      // 分析代码
+      function analyzeCode() {
+        const code = document.getElementById("codeInput").value;
+        const { tokens, errors } = lexicalAnalyze(code);
+
+        // 显示Token列表
+        displayTokens(tokens);
+
+        // 显示统计信息
+        displayStats(tokens, errors);
+
+        // 显示可视化
+        displayVisualization(tokens);
+
+        // 显示错误
+        displayErrors(errors);
+      }
+
+      // 显示Token列表
+      function displayTokens(tokens) {
+        const tokenList = document.getElementById("tokenList");
+        tokenList.innerHTML = "";
+
+        tokens.forEach((token, index) => {
+          const item = document.createElement("div");
+          item.className = "token-item";
+          item.innerHTML = `
+                    <span class="token-index">${index + 1}</span>
+                    <span class="token-type ${getTokenClass(token.type)}">${
+            token.type
+          }</span>
+                    <span class="token-value">${escapeHtml(token.value)}</span>
+                    <span class="token-location">L${token.line}:C${
+            token.column
+          }</span>
+                `;
+          tokenList.appendChild(item);
+        });
+      }
+
+      // 显示统计信息
+      function displayStats(tokens, errors) {
+        const keywords = ["INT", "IF", "ELSE", "WHILE", "RETURN", "VOID"];
+        const numbers = ["NUM", "FLOAT"];
+
+        document.getElementById("totalTokens").textContent = tokens.length;
+        document.getElementById("totalKeywords").textContent = tokens.filter(
+          (t) => keywords.includes(t.type)
+        ).length;
+        document.getElementById("totalIdentifiers").textContent = tokens.filter(
+          (t) => t.type === "ID"
+        ).length;
+        document.getElementById("totalNumbers").textContent = tokens.filter(
+          (t) => numbers.includes(t.type)
+        ).length;
+        document.getElementById("totalErrors").textContent = errors.length;
+      }
+
+      // 显示错误
+      function displayErrors(errors) {
+        const container = document.getElementById("errorContainer");
+
+        if (errors.length === 0) {
+          container.innerHTML = "";
+          return;
+        }
+
+        let html = '<div class="error-list">';
+        errors.forEach((error) => {
+          html += `<div class="error-item">
+                    <span class="error-location">[L${error.line}:C${error.column}]</span>
+                    ${error.message}
+                </div>`;
+        });
+        html += "</div>";
+        container.innerHTML = html;
+      }
+
+      // 显示可视化
+      function displayVisualization(tokens) {
+        const canvas = document.getElementById("visualization");
+        canvas.innerHTML = "";
+
+        tokens.forEach((token, index) => {
+          const node = document.createElement("div");
+          node.className = `token-node ${getTokenClass(token.type)}`;
+          node.innerHTML = `
+                    <div style="font-weight: bold;">${token.type}</div>
+                    <div style="font-size: 0.9em; font-family: monospace;">${escapeHtml(
+                      token.value
+                    )}</div>
+                `;
+          node.title = `L${token.line}:C${token.column}`;
+          canvas.appendChild(node);
+        });
+      }
+
+      // 导出JSON
+      function exportTokens() {
+        const code = document.getElementById("codeInput").value;
+        const { tokens } = lexicalAnalyze(code);
+
+        const dataStr = JSON.stringify(tokens, null, 2);
+        const dataBlob = new Blob([dataStr], { type: "application/json" });
+        const url = URL.createObjectURL(dataBlob);
+
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = "tokens.json";
+        link.click();
+      }
+
+      // 清空
+      function clearAll() {
+        document.getElementById("codeInput").value = "";
+        document.getElementById("tokenList").innerHTML =
+          '<div style="padding: 50px; text-align: center; color: #999;">点击"开始分析"按钮查看Token序列</div>';
+        document.getElementById("visualization").innerHTML =
+          '<div style="padding: 50px; text-align: center; color: #999;">Token流将在此显示</div>';
+        document.getElementById("errorContainer").innerHTML = "";
+      }
+
+      // 加载示例
+      function loadExample(num) {
+        const examples = {
+          1: `int main() {
+    int x = 10;
+    int y = 20;
+    int sum = x + y;
+    return sum;
+}`,
+          2: `float pi = 3.14159;
+float e = 2.71828;
+float big = 1.5e+10;
+float small = 2.5e-3;`,
+          3: `string name = "Alice";
+string greeting = "Hello World!";
+string escaped = "Line1\\nLine2\\tTab";`,
+          4: `int x = @10;  // @ 是错误字符
+int y = #20;  // # 是错误字符
+int z = $30;  // $ 是错误字符
+int w = 40;   // 正常语句`,
+          5: `// 这是单行注释
+int x = 10;
+
+/* 这是多行注释
+   可以跨越多行
+   非常方便 */
+int y = 20;`,
+        };
+
+        document.getElementById("codeInput").value = examples[num] || "";
+      }
+
+      // HTML转义
+      function escapeHtml(text) {
+        const div = document.createElement("div");
+        div.textContent = text;
+        return div.innerHTML;
+      }
+
+      // 页面加载时自动分析
+      window.onload = function () {
+        analyzeCode();
+      };
+    </script>
+  </body>
+</html>
